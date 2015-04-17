@@ -1119,6 +1119,7 @@ Printrun. If not, see <http://www.gnu.org/licenses/>."""
         wx.CallAfter(self.toolbarsizer.Layout)
         
     def poweroff(self, event = None):
+        self.disconnect()
         self.mqtt_connect_send_disconnect(str(self.settings.mqtt_topic_power), str(self.settings.mqtt_message_poweroff))
 
         wx.CallAfter(self.powerbtn.SetLabel, _("Power on"))
