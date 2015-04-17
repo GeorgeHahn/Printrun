@@ -1096,6 +1096,9 @@ Printrun. If not, see <http://www.gnu.org/licenses/>."""
         self.predisconnect_layer = self.curlayer
         
     def mqtt_connect_send_disconnect(self, topic, message):
+        if topic == "" or message == "" or self.settings.mqtt_url == "":
+            return # MQTT not setup
+        
         try:
             self.mqtt = mosquitto.Mosquitto()
             self.mqtt.username_pw_set(self.settings.mqtt_user, self.settings.mqtt_pass)
