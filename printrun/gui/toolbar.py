@@ -57,6 +57,14 @@ def MainToolbar(root, parentpanel = None, use_wrapsizer = False):
     else:
         root.connectbtn.Reparent(parentpanel)
     self.Add(root.connectbtn)
+
+    if not hasattr(root, "powerbtn"):
+        root.powerbtn = make_autosize_button(parentpanel, _("Power on"), root.poweron, _("Power the printer"))
+        root.statefulControls.append(root.powerbtn)
+    else:
+        root.powerbtn.Reparent(parentpanel)
+    self.Add(root.powerbtn)
+    
     if not hasattr(root, "resetbtn"):
         root.resetbtn = make_autosize_button(parentpanel, _("Reset"), root.reset, _("Reset the printer"))
         root.statefulControls.append(root.resetbtn)

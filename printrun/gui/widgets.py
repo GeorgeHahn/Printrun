@@ -120,7 +120,8 @@ SETTINGS_GROUPS = {"Printer": _("Printer settings"),
                    "UI": _("User interface"),
                    "Viewer": _("Viewer"),
                    "Colors": _("Colors"),
-                   "External": _("External commands")}
+                   "External": _("External commands"),
+                   "MQTT": _("MQTT settings")}
 
 class PronterOptionsDialog(wx.Dialog):
     """Options editor"""

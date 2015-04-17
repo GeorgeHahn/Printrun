@@ -25,6 +25,8 @@ import cStringIO as StringIO
 import subprocess
 import glob
 import logging
+import mosquitto
+from datetime import datetime
 
 try: import simplejson as json
 except ImportError: import json
@@ -244,7 +246,7 @@ class PronterWindow(MainWindow, pronsole.pronsole):
             self.do_load(self.filename)
         if self.settings.monitor:
             self.update_monitor()
-
+        
     #  --------------------------------------------------------------
     #  Main interface handling
     #  --------------------------------------------------------------
@@ -872,6 +874,13 @@ Printrun. If not, see <http://www.gnu.org/licenses/>."""
         self.settings._add(StringSetting("gcview_color_current", "#00E5FFCC", _("3D view current layer moves color"), _("Color of moves in current layer in 3D view"), "Colors"), self.update_gcview_colors, validate = check_rgba_color)
         self.settings._add(StringSetting("gcview_color_current_printed", "#196600CC", _("3D view printed current layer moves color"), _("Color of already printed moves from current layer in 3D view"), "Colors"), self.update_gcview_colors, validate = check_rgba_color)
         self.settings._add(StaticTextSetting("note1", _("Note:"), _("Changing some of these settings might require a restart to get effect"), group = "UI"))
+        self.settings._add(StringSetting("mqtt_user", "", _("MQTT username"), _(""), "MQTT"))
+        self.settings._add(StringSetting("mqtt_pass", "", _("MQTT password"), _(""), "MQTT"))
+        self.settings._add(StringSetting("mqtt_url", "", _("MQTT server"), _(""), "MQTT"))
+        self.settings._add(SpinSetting("mqtt_port", 1883, 0, 65535, _("MQTT port"), _(""), "MQTT"))
+        self.settings._add(StringSetting("mqtt_topic_power", "", _("MQTT power topic"), _(""), "MQTT"))
+        self.settings._add(StringSetting("mqtt_message_poweron", "", _("MQTT power on message"), _(""), "MQTT"))
+        self.settings._add(StringSetting("mqtt_message_poweroff", "", _("MQTT power off message"), _(""), "MQTT"))
         recentfilessetting = StringSetting("recentfiles", "[]")
         recentfilessetting.hidden = True
         self.settings._add(recentfilessetting, self.update_recent_files)
@@ -1032,6 +1041,24 @@ Printrun. If not, see <http://www.gnu.org/licenses/>."""
 
     def connect(self, event = None):
         self.log(_("Connecting..."))
+        
+        #try:
+        #    self.mqtt = mosquitto.Mosquitto()
+        #    self.mqtt.username_pw_set('Pronterface', 'NfTxzuZ88YlfaVEPMlazuADbZtwFHNZfOOa9vFXPTbhs2VA7oYoSs5fzp63V8Hz')
+        #    self.mqtt.connect('104.131.87.42', 1883)
+        #    self.mqtt.publish("printer/state/", "on")
+        #    self.mqtt.disconnect()
+        #except:
+        #    self.logError(_("MQTT error: ")
+        #                  + "\n" + traceback.format_exc())
+                          
+        #hasPort = False
+        #timeout = datetime.now()
+        #while not hasPort and (datetime.now() - timeout).seconds < 5:
+        #    hasPort = self.settings.port in self.scanserial()
+        #
+        #time.sleep(1)
+        
         port = None
         if self.serialport.GetValue():
             port = str(self.serialport.GetValue())
@@ -1067,6 +1094,34 @@ Printrun. If not, see <http://www.gnu.org/licenses/>."""
         self.predisconnect_mainqueue = self.p.mainqueue
         self.predisconnect_queueindex = self.p.queueindex
         self.predisconnect_layer = self.curlayer
+        
+    def mqtt_connect_send_disconnect(self, topic, message):
+        try:
+            self.mqtt = mosquitto.Mosquitto()
+            self.mqtt.username_pw_set(self.settings.mqtt_user, self.settings.mqtt_pass)
+            self.mqtt.connect(self.settings.mqtt_url, self.settings.mqtt_port)
+            self.mqtt.publish(topic, message)
+            self.mqtt.disconnect()
+        except:
+            self.logError(_("MQTT error: ")
+                          + "\n" + traceback.format_exc())
+        
+        
+    def poweron(self, event = None):
+        self.mqtt_connect_send_disconnect(str(self.settings.mqtt_topic_power), str(self.settings.mqtt_message_poweron))
+        
+        wx.CallAfter(self.powerbtn.SetLabel, _("Power off"))
+        wx.CallAfter(self.powerbtn.SetToolTip, wx.ToolTip(_("Turn off the printer")))
+        wx.CallAfter(self.powerbtn.Bind, wx.EVT_BUTTON, self.poweroff)
+        wx.CallAfter(self.toolbarsizer.Layout)
+        
+    def poweroff(self, event = None):
+        self.mqtt_connect_send_disconnect(str(self.settings.mqtt_topic_power), str(self.settings.mqtt_message_poweroff))
+
+        wx.CallAfter(self.powerbtn.SetLabel, _("Power on"))
+        wx.CallAfter(self.powerbtn.SetToolTip, wx.ToolTip(_("Power the printer")))
+        wx.CallAfter(self.powerbtn.Bind, wx.EVT_BUTTON, self.poweron)
+        wx.CallAfter(self.toolbarsizer.Layout)
 
     def disconnect(self, event = None):
         self.log(_("Disconnected."))
